@@ -494,6 +494,9 @@ export class DockerService {
       const port = portMatch[1] || portMatch[2]
       const portText = port ? `port ${port}` : 'a required port'
       if (port === '11434' || serviceName === SERVICE_NAMES.OLLAMA) {
+        if (env.get('NOMAD_HOST_OS') === 'darwin') {
+          return `Couldn't start because ${portText} is already in use — this is expected on macOS, where Ollama runs natively (via Homebrew) for Metal acceleration instead of in a container. There's no need to install the Ollama container here: use the "Remote Ollama URL" field in AI Assistant settings to point NOMAD at http://host.docker.internal:11434 instead.`
+        }
         return `Couldn't start because ${portText} is already in use on this machine. This usually means Ollama is already installed and running directly on the host (outside NOMAD). Stop and disable the host Ollama service (e.g. "sudo systemctl stop ollama" then "sudo systemctl disable ollama"), then try again.`
       }
       return `Couldn't start because ${portText} is already in use on this machine. Stop whatever is using ${portText} on the host, then try again.`
