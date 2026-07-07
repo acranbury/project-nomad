@@ -29,10 +29,14 @@ export default class MacosOllamaAutoconfigProvider {
       try {
         const KVStore = (await import('#models/kv_store')).default
 
-        const existing = await KVStore.getValue('ai.remoteOllamaUrl')
-        if (existing) {
+        // Check row existence, not value truthiness: KVStore.clearValue() stores null
+        // rather than deleting the row, so a user who deliberately clears the remote URL
+        // (e.g. to switch backends, or to use the containerized Ollama instead) would have
+        // it silently reinstated on every admin restart if we only checked getValue().
+        const existingRow = await KVStore.findBy('key', 'ai.remoteOllamaUrl')
+        if (existingRow) {
           logger.info(
-            '[MacosOllamaAutoconfigProvider] ai.remoteOllamaUrl already set — leaving it untouched.'
+            '[MacosOllamaAutoconfigProvider] ai.remoteOllamaUrl already set (or previously cleared) — leaving it untouched.'
           )
           return
         }

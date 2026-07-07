@@ -35,7 +35,7 @@ Project N.O.M.A.D. is now installed on your device! Open a browser and navigate 
 For a complete step-by-step walkthrough (including Ubuntu installation), see the [Installation Guide](https://www.projectnomad.us/install). For Windows users, see the [WSL2 install guide](https://www.projectnomad.us/install/wsl2) — community-supported path covering native Docker and Docker Desktop install routes.
 
 ### Quick Install (Apple Silicon Mac)
-Requires macOS 14+ on an Apple Silicon Mac (M-series). [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or [OrbStack](https://orbstack.dev/)) is installed automatically if missing — no sudo required.
+Requires macOS 14+ on an Apple Silicon Mac (M-series). [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or [OrbStack](https://orbstack.dev/)) is installed automatically if missing — no sudo required for NOMAD itself, though Docker Desktop's own installer may prompt for your password once, and its first launch needs a one-time setup dialog.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/install_nomad_macos.sh \

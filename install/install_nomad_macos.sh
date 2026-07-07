@@ -139,7 +139,7 @@ ensure_homebrew_installed() {
 ensure_docker_installed() {
   if ! command -v docker &> /dev/null; then
     echo -e "${YELLOW}#${RESET} Docker not found. Installing Docker Desktop via Homebrew...\\n"
-    if ! brew install --cask docker; then
+    if ! brew install --cask docker-desktop; then
       echo -e "${RED}#${RESET} Failed to install Docker Desktop. Please install it manually from https://www.docker.com/products/docker-desktop/ and try again."
       exit 1
     fi
@@ -189,18 +189,26 @@ ensure_ollama_native() {
     return
   fi
 
-  if ! command -v ollama &> /dev/null; then
-    echo -e "${YELLOW}#${RESET} Installing Ollama via Homebrew...\\n"
-    if ! brew install ollama; then
-      echo -e "${RED}#${RESET} Failed to install Ollama. Please install it manually from https://ollama.com/download and try again."
+  if command -v ollama &> /dev/null && ! brew list ollama &> /dev/null; then
+    # 'ollama' CLI is present but not managed by Homebrew — most likely Ollama.app installed
+    # directly from ollama.com (its installer also drops a CLI symlink). 'brew services start'
+    # would fail here since there's no brew-managed formula/service to start.
+    echo -e "${YELLOW}#${RESET} Found an existing Ollama installation not managed by Homebrew. Attempting to launch it...\\n"
+    open -a Ollama 2>/dev/null || echo -e "${YELLOW}#${RESET} Could not auto-launch the Ollama app. Please start Ollama manually, then re-run this script.\\n"
+  else
+    if ! command -v ollama &> /dev/null; then
+      echo -e "${YELLOW}#${RESET} Installing Ollama via Homebrew...\\n"
+      if ! brew install ollama; then
+        echo -e "${RED}#${RESET} Failed to install Ollama. Please install it manually from https://ollama.com/download and try again."
+        exit 1
+      fi
+    fi
+
+    echo -e "${YELLOW}#${RESET} Starting Ollama as a background service (brew services)...\\n"
+    if ! brew services start ollama; then
+      echo -e "${RED}#${RESET} Failed to start the Ollama service. Please run 'brew services start ollama' manually."
       exit 1
     fi
-  fi
-
-  echo -e "${YELLOW}#${RESET} Starting Ollama as a background service (brew services)...\\n"
-  if ! brew services start ollama; then
-    echo -e "${RED}#${RESET} Failed to start the Ollama service. Please run 'brew services start ollama' manually."
-    exit 1
   fi
 
   local waited=0
@@ -293,6 +301,21 @@ download_management_compose_file() {
   # as the sed delimiter since NOMAD_DIR itself contains slashes.
   sed -i '' "s#/opt/project-nomad#${NOMAD_DIR}#g" "$compose_file_path"
 
+  # The global retarget above also rewrote the updater sidecar's bind mount to
+  # "${NOMAD_DIR}:${NOMAD_DIR}". But the updater IMAGE hardcodes the container-side
+  # path (install/sidecar-updater/update-watcher.sh: COMPOSE_FILE="/opt/project-nomad/compose.yml")
+  # with no env override, so leaving it rewritten would make every in-app update fail at
+  # "Applying image tag to compose.yml" once it can't find that path inside the container.
+  # Fix the container side back to the canonical path — the host side (already retargeted)
+  # is all `docker compose` needs to resolve the bind correctly against the host daemon.
+  awk -v nomad_dir="$NOMAD_DIR" '
+    /# Writable access required so the updater can set the correct image tag/ {
+      print "      - " nomad_dir ":/opt/project-nomad # Writable access required so the updater can set the correct image tag in compose.yml. This needs to be the same location that the compose file is located at on the host for the updater to work correctly"
+      next
+    }
+    { print }
+  ' "$compose_file_path" > "${compose_file_path}.tmp" && mv "${compose_file_path}.tmp" "$compose_file_path"
+
   sed -i '' "s#URL=replaceme#URL=http://${local_ip_address}:8080#g" "$compose_file_path"
   sed -i '' "s#APP_KEY=replaceme#APP_KEY=${app_key}#g" "$compose_file_path"
   sed -i '' "s#DB_PASSWORD=replaceme#DB_PASSWORD=${db_user_password}#g" "$compose_file_path"
@@ -309,6 +332,14 @@ download_management_compose_file() {
       print "      - NOMAD_DEFAULT_OLLAMA_URL=" ollama_url
     }
   ' "$compose_file_path" > "${compose_file_path}.tmp" && mv "${compose_file_path}.tmp" "$compose_file_path"
+
+  # The anchor above depends on "- HOST=0.0.0.0" staying unique to the admin service in the
+  # upstream compose file. Fail loudly instead of silently shipping a config where the AI
+  # Assistant isn't actually pre-wired to the native Ollama.
+  if ! grep -q 'NOMAD_HOST_OS=darwin' "$compose_file_path"; then
+    echo -e "${RED}#${RESET} Failed to inject macOS environment variables into compose.yml. The compose file format may have changed upstream."
+    exit 1
+  fi
 
   # The disk-collector's "/:/host:ro,rslave" mount reflects Docker Desktop's Linux VM
   # filesystem, not the Mac's actual disk, and rslave propagation doesn't carry real
@@ -400,9 +431,11 @@ success_message() {
 ###################################################################################################################################################################################################
 
 # Pre-flight checks
+# check_is_bash runs first since check_is_macos/check_is_apple_silicon use [[ ]], a bashism
+# that emits "not found" errors (and silently falls through) under sh/dash.
+check_is_bash
 check_is_macos
 check_is_apple_silicon
-check_is_bash
 check_is_debug_mode
 
 # Main install
