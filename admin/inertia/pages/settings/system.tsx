@@ -224,6 +224,17 @@ export default function SettingsPage(props: {
                   />
                 </div>
               )}
+              {info?.gpuHealth?.gpuVendor === 'metal' && (
+                <InfoCard
+                  title="AI Acceleration"
+                  icon={<IconComponents className="w-6 h-6" />}
+                  variant="elevated"
+                  data={[
+                    { label: 'Backend', value: 'Apple Metal (native)' },
+                    { label: 'Ollama', value: 'Running natively on the macOS host' },
+                  ]}
+                />
+              )}
               {info?.graphics?.controllers && info.graphics.controllers.length > 0 && (
                 <InfoCard
                   title="Graphics"

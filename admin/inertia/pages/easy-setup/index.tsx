@@ -113,7 +113,7 @@ const CURATED_CATEGORIES_KEY = 'curated-categories'
 const WIKIPEDIA_STATE_KEY = 'wikipedia-state'
 
 export default function EasySetupWizard(props: {
-  system: { services: ServiceSlim[]; remoteOllamaUrl: string }
+  system: { services: ServiceSlim[]; remoteOllamaUrl: string; isMacosHost: boolean }
 }) {
   const { aiAssistantName } = usePage<{ aiAssistantName: string }>().props
   const CORE_CAPABILITIES = buildCoreCapabilities(aiAssistantName)
@@ -797,6 +797,13 @@ export default function EasySetupWizard(props: {
                                   />
                                   {remoteOllamaUrlError && (
                                     <p className="mt-1 text-xs text-red-600">{remoteOllamaUrlError}</p>
+                                  )}
+                                  {props.system.isMacosHost && (
+                                    <p className="mt-2 text-xs text-gray-500">
+                                      Pre-configured to use Ollama running natively on this Mac
+                                      (Metal-accelerated). Only change this if you want to use a
+                                      different AI backend.
+                                    </p>
                                   )}
                                 </div>
                               )}

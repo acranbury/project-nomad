@@ -5,7 +5,9 @@ export type GpuHealthStatus = {
   hasNvidiaRuntime: boolean
   hasRocmRuntime: boolean
   ollamaGpuAccessible: boolean
-  gpuVendor?: 'nvidia' | 'amd'
+  // 'metal' means Ollama is running natively on a macOS host (see install_nomad_macos.sh)
+  // rather than in a container, so it isn't a Docker GPU runtime like the other two.
+  gpuVendor?: 'nvidia' | 'amd' | 'metal'
 }
 
 export type SystemInformationResponse = {

@@ -455,6 +455,37 @@ export class SystemService {
         ollamaGpuAccessible: false,
       }
 
+      // On macOS, Ollama runs natively on the host (install_nomad_macos.sh) rather than
+      // in a container, so none of the Docker-runtime/lspci-based GPU detection below
+      // applies — that machinery only ever sees the Docker Desktop Linux VM, never the
+      // real Apple Silicon GPU. install_nomad_macos.sh writes this marker only after
+      // confirming native Ollama actually responded on port 11434, so 'metal' here means
+      // an install-time-verified native, Metal-accelerated Ollama, not a live probe.
+      try {
+        const gpuMarker = (await readFile('/app/storage/.nomad-gpu-type', 'utf8')).trim()
+        if (gpuMarker === 'metal') {
+          return {
+            cpu,
+            mem,
+            os,
+            disk,
+            currentLoad,
+            fsSize,
+            uptime,
+            graphics,
+            gpuHealth: {
+              status: 'ok',
+              hasNvidiaRuntime: false,
+              hasRocmRuntime: false,
+              ollamaGpuAccessible: true,
+              gpuVendor: 'metal',
+            },
+          }
+        }
+      } catch {
+        // No marker file — not a macOS install, continue with normal Linux GPU detection
+      }
+
       // Query Docker API for host-level info (hostname, OS, GPU runtime)
       // si.osInfo() returns the container's info inside Docker, not the host's
       try {
