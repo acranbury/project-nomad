@@ -77,12 +77,30 @@ ollama_cleanup() {
     return
   fi
 
-  read -p "Do you also want to stop and uninstall the native Ollama service (installed via Homebrew)? This will remove any downloaded models. (y/N): " ollama_choice
+  read -p "Do you also want to stop and uninstall the native Ollama service (installed via Homebrew)? (y/N): " ollama_choice
   case "$ollama_choice" in
     y|Y )
       brew services stop ollama 2>/dev/null || true
       brew uninstall ollama 2>/dev/null || true
       echo "Ollama service stopped and uninstalled."
+
+      # 'brew uninstall' only removes the formula/binary — it does NOT touch ~/.ollama,
+      # which is where downloaded models actually live (independent of Homebrew) and can
+      # be several GB. Ask separately so disk space is actually reclaimed if requested.
+      if [[ -d "$HOME/.ollama" ]]; then
+        local ollama_data_size
+        ollama_data_size=$(du -sh "$HOME/.ollama" 2>/dev/null | cut -f1)
+        read -p "Downloaded models are still on disk at ~/.ollama (${ollama_data_size:-unknown size}). Delete them too? This cannot be undone. (y/N): " models_choice
+        case "$models_choice" in
+          y|Y )
+            rm -rf "$HOME/.ollama"
+            echo "Removed ~/.ollama and all downloaded models."
+            ;;
+          * )
+            echo "Leaving ~/.ollama (downloaded models) in place."
+            ;;
+        esac
+      fi
       ;;
     * )
       echo "Leaving native Ollama installation in place."
