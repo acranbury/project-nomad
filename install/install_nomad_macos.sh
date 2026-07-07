@@ -34,10 +34,13 @@ GREEN='\033[1;32m'
 ###################################################################################################################################################################################################
 
 NOMAD_DIR="${NOMAD_DIR:-$HOME/nomad}"
-MANAGEMENT_COMPOSE_FILE_URL="https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/management_compose.yaml"
-START_SCRIPT_URL="https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/start_nomad.sh"
-STOP_SCRIPT_URL="https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/stop_nomad.sh"
-UPDATE_SCRIPT_URL="https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/update_nomad_macos.sh"
+# Override to test against a fork/branch that hasn't merged to upstream main yet, e.g.:
+#   INSTALL_BASE_URL="https://raw.githubusercontent.com/<owner>/project-nomad/refs/heads/<branch>" bash install_nomad_macos.sh
+INSTALL_BASE_URL="${INSTALL_BASE_URL:-https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main}"
+MANAGEMENT_COMPOSE_FILE_URL="${INSTALL_BASE_URL}/install/management_compose.yaml"
+START_SCRIPT_URL="${INSTALL_BASE_URL}/install/start_nomad.sh"
+STOP_SCRIPT_URL="${INSTALL_BASE_URL}/install/stop_nomad.sh"
+UPDATE_SCRIPT_URL="${INSTALL_BASE_URL}/install/update_nomad_macos.sh"
 OLLAMA_URL="http://host.docker.internal:11434"
 script_option_debug='true'
 accepted_terms='false'
