@@ -4,6 +4,7 @@ import { CollectionManifestService } from '#services/collection_manifest_service
 import KVStore from '#models/kv_store'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
+import env from '#start/env'
 
 @inject()
 export default class EasySetupController {
@@ -21,6 +22,7 @@ export default class EasySetupController {
       system: {
         services: services,
         remoteOllamaUrl: remoteOllamaUrl ?? '',
+        isMacosHost: env.get('NOMAD_HOST_OS') === 'darwin',
       },
     })
   }

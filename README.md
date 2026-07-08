@@ -34,6 +34,17 @@ Project N.O.M.A.D. is now installed on your device! Open a browser and navigate 
 
 For a complete step-by-step walkthrough (including Ubuntu installation), see the [Installation Guide](https://www.projectnomad.us/install). For Windows users, see the [WSL2 install guide](https://www.projectnomad.us/install/wsl2) — community-supported path covering native Docker and Docker Desktop install routes.
 
+### Quick Install (Apple Silicon Mac)
+Requires macOS 14+ on an Apple Silicon Mac (M-series). [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or [OrbStack](https://orbstack.dev/)) is installed automatically if missing — no sudo required for NOMAD itself, though Docker Desktop's own installer may prompt for your password once, and its first launch needs a one-time setup dialog.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/install_nomad_macos.sh \
+  -o install_nomad_macos.sh && \
+bash install_nomad_macos.sh
+```
+
+Unlike the Linux install, Ollama is installed **natively** via Homebrew instead of in a container — Docker on macOS has no access to the Apple GPU, so a containerized Ollama would be CPU-only. Running it natively means it uses **Metal acceleration automatically**, and the AI Assistant is pre-configured to talk to it out of the box. Everything else (the management UI, database, Kiwix, etc.) still runs in Docker exactly as it does on Linux.
+
 ### Advanced Installation
 For more control over the installation process, copy and paste the [Docker Compose template](https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/management_compose.yaml) into a `docker-compose.yml` file and customize it to your liking (be sure to replace any placeholders with your actual values). Then, run `docker compose up -d` to start the Command Center and its dependencies. Note: this method is recommended for advanced users only, as it requires familiarity with Docker and manual configuration before starting.
 
@@ -91,6 +102,12 @@ To run LLMs and other included AI tools:
 - Storage: At least 250 GB free disk space (preferably on SSD)
 - OS: Debian-based (Ubuntu recommended)
 - Stable internet connection (required during install only)
+
+#### Apple Silicon Mac Specs
+- Chip: Any Apple Silicon (M-series)
+- RAM: 16 GB unified memory minimum (comfortably runs 7–8B Q4 models), 32 GB+ recommended for 13B+ models — RAM is shared between the system and the GPU, so this determines both what runs well and how many other apps you can keep open
+- Storage: At least 250 GB free disk space (preferably on the internal SSD)
+- OS: macOS 14 (Sonoma) or later
 
 **For detailed build recommendations at three price points ($150–$1,000+), see the [Hardware Guide](https://www.projectnomad.us/hardware).**
 

@@ -22,7 +22,17 @@ Long answer: Custom storage paths, mount points, and external drives (like iSCSI
 
 **WSL2 on Windows** is community-supported via the [WSL2 install guide](https://www.projectnomad.us/install/wsl2) — covers two install paths (native Docker and Docker Desktop) with all known gotchas documented and empirical performance numbers comparing WSL2 to bare-metal.
 
-**macOS and other non-Debian Linux distros** aren't officially supported. See [Why does NOMAD require a Debian-based OS?](#why-does-nomad-require-a-debian-based-os) for details.
+**Apple Silicon Macs (M-series)** are officially supported via the [macOS Quick Install](README.md#quick-install-apple-silicon-mac) — see [How does the AI Assistant get Metal acceleration on macOS?](#how-does-the-ai-assistant-get-metal-acceleration-on-macos) for how it differs from the Linux install.
+
+**Other non-Debian Linux distros** (and Intel Macs, which the installer will run on but hasn't been tuned for) aren't officially supported. See [Why does NOMAD require a Debian-based OS?](#why-does-nomad-require-a-debian-based-os) for details.
+
+## How does the AI Assistant get Metal acceleration on macOS?
+
+Docker Desktop on macOS runs containers inside a Linux VM that has no access to the Apple GPU — there's no Metal equivalent of the NVIDIA Container Toolkit, so an Ollama *container* would be stuck on CPU-only inference no matter how powerful your Mac is.
+
+To get around this, `install_nomad_macos.sh` installs Ollama **natively** on the Mac via Homebrew instead of as a container. The native binary uses Metal automatically — no configuration needed. Everything else (the Command Center, MySQL, Redis, Kiwix, etc.) still runs in Docker exactly like on Linux; only the LLM inference step runs outside the container boundary. The installer pre-configures the AI Assistant's "Remote Ollama URL" setting (Settings → AI Assistant) to point at `http://host.docker.internal:11434`, so this is transparent — you don't need to do anything manually.
+
+If you ever see a "port 11434 already in use" message during an AI Assistant install attempt on macOS, that's expected: it means the native Ollama is already running correctly. There's no need to install the Ollama container on top of it.
 
 ## Why does NOMAD require a Debian-based OS?
 
@@ -41,7 +51,7 @@ Community members have forked and published their own ARM-compatible images and 
 
 ## What are the hardware requirements for running NOMAD?
 
-Project N.O.M.A.D. itself is quite lightweight and can run on even modest x86-64 hardware, but the tools and resources you choose to install with N.O.M.A.D. will determine the specs required for your unique deployment. Please see the [Hardware Guide](https://www.projectnomad.us/hardware) for detailed build recommendations at various price points.
+Project N.O.M.A.D. itself is quite lightweight and can run on even modest x86-64 (or Apple Silicon, on macOS) hardware, but the tools and resources you choose to install with N.O.M.A.D. will determine the specs required for your unique deployment. See the README's [Device Requirements](README.md#device-requirements) section for baseline specs (including Apple Silicon Mac specs), and the [Hardware Guide](https://www.projectnomad.us/hardware) for detailed build recommendations at various price points.
 
 ## Does NOMAD support languages other than English?
 
@@ -68,7 +78,7 @@ All of NOMAD's containers are prefixed with `nomad_` in their names, so they can
 See [What technologies is NOMAD built with?](#what-technologies-is-nomad-built-with)
 
 ## Can I use any AI models?
-NOMAD by default uses Ollama inside of a docker container to run LLM Models for the AI Assistant. So if you find a model on HuggingFace for example, you won't be able to use that model in NOMAD. The list of available models in the AI Assistant settings (/settings/models) may not show all of the models you are looking for. If you found a model from https://ollama.com/search that you'd like to try and its not in the settings page, you can use a curl command to download the model.  
+NOMAD by default uses Ollama to run LLM Models for the AI Assistant — inside a Docker container on Linux, or natively via Homebrew on macOS (see [How does the AI Assistant get Metal acceleration on macOS?](#how-does-the-ai-assistant-get-metal-acceleration-on-macos)). Either way, if you find a model on HuggingFace for example, you won't be able to use that model in NOMAD directly. The list of available models in the AI Assistant settings (/settings/models) may not show all of the models you are looking for. If you found a model from https://ollama.com/search that you'd like to try and its not in the settings page, you can use a curl command to download the model.  
 `curl -X POST -H "Content-Type: application/json" -d '{"model":"MODEL_NAME_HERE"}' http://localhost:8080/api/ollama/models` replacing MODEL_NAME_HERE with the model name from whats in the ollama website.
 
 ## Do I have to install the AI features in NOMAD?

@@ -30,6 +30,19 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |----------------------------------------------------------
+  | Variables for macOS (native Ollama) installs
+  |----------------------------------------------------------
+  */
+  // Set by install_nomad_macos.sh so the admin can tailor messaging (e.g. Homebrew
+  // instead of systemctl) for host-specific issues like port conflicts.
+  NOMAD_HOST_OS: Env.schema.string.optional(),
+  // Set by install_nomad_macos.sh to the native, Metal-accelerated Ollama running on the
+  // Mac host (typically http://host.docker.internal:11434). Consumed once by
+  // MacosOllamaAutoconfigProvider to seed the ai.remoteOllamaUrl KV setting on first boot.
+  NOMAD_DEFAULT_OLLAMA_URL: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
   | Variables for configuring session package
   |----------------------------------------------------------
   */
