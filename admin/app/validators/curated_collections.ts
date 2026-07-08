@@ -9,6 +9,10 @@ export const specResourceValidator = vine.object({
   description: vine.string(),
   url: vine.string().url(),
   size_mb: vine.number().min(0).optional(),
+  // Short, free-text scope hint shown in the UI so users can tell a reference work from a
+  // small community scrape before downloading (e.g. "reference-qa", "community-scrape").
+  // Optional and unstructured on purpose — not every resource needs one.
+  content_type: vine.string().optional(),
 })
 
 // ---- ZIM Categories spec (versioned) ----

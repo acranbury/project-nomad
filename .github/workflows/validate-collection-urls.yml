@@ -7,6 +7,10 @@ on:
   pull_request:
     paths:
       - 'collections/**.json'
+  # Kiwix/GitHub mirrors periodically drop older dated files independent of any edit to these
+  # collection JSON files, so link rot needs its own check on a schedule, not just on push/PR.
+  schedule:
+    - cron: '0 9 * * 1' # Every Monday at 09:00 UTC
 
 jobs:
   validate-urls:

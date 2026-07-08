@@ -30,7 +30,8 @@ import { RunDownloadJob } from '#jobs/run_download_job'
 import { SERVICE_NAMES } from '../../constants/service_names.js'
 import { CollectionManifestService } from './collection_manifest_service.js'
 import { KiwixLibraryService } from './kiwix_library_service.js'
-import type { CategoryWithStatus } from '../../types/collections.js'
+import { KiwixCatalogService } from './kiwix_catalog_service.js'
+import type { CategoryWithStatus, SpecResource } from '../../types/collections.js'
 import CustomLibrarySource from '#models/custom_library_source'
 import { assertNotPrivateUrl } from '#validators/common'
 
@@ -269,30 +270,91 @@ export class ZimService {
         continue
       }
 
-      const filename = resource.url.split('/').pop()
+      // The pinned URL in the collections manifest can go stale between manifest edits
+      // (Kiwix mirrors periodically drop older dated files). Rather than surface an opaque
+      // download failure to the user, check the URL is actually reachable first and, if not,
+      // resolve the newest available version of the same book from the live Kiwix catalog.
+      const { url, version, sizeMb } = await this._resolveCuratedZimDownload(resource)
+
+      const filename = url.split('/').pop()
       if (!filename) continue
 
       downloadFilenames.push(filename)
       const filepath = join(process.cwd(), ZIM_STORAGE_PATH, filename)
 
       await RunDownloadJob.dispatch({
-        url: resource.url,
+        url,
         filepath,
         timeout: 30000,
         allowedMimeTypes: ZIM_MIME_TYPES,
         forceNew: true,
         filetype: 'zim',
         title: (resource as any).title || undefined,
-        totalBytes: (resource as any).size_mb ? (resource as any).size_mb * 1024 * 1024 : undefined,
+        totalBytes: sizeMb ? sizeMb * 1024 * 1024 : undefined,
         resourceMetadata: {
           resource_id: resource.id,
-          version: resource.version,
+          version,
           collection_ref: categorySlug,
         },
       })
     }
 
     return downloadFilenames.length > 0 ? downloadFilenames : null
+  }
+
+  /**
+   * HEAD-checks a curated resource's pinned URL and, if it's gone, resolves the newest
+   * available version of the same book via KiwixCatalogService (the same lookup the content
+   * auto-updater uses). Falls back to the original URL/version/size unchanged if the pinned
+   * URL is reachable, or if resolution fails — the download job's own error handling is the
+   * backstop either way, this is purely an attempt to avoid a needless failure.
+   */
+  private async _resolveCuratedZimDownload(
+    resource: SpecResource
+  ): Promise<{ url: string; version: string; sizeMb: number }> {
+    const fallback = { url: resource.url, version: resource.version, sizeMb: resource.size_mb }
+
+    try {
+      // A ranged GET, not HEAD — mirrors validate-collection-urls.yml's own check, since some
+      // Kiwix mirrors don't reliably support HEAD but do honor Range on a real file.
+      const probe = await axios.get(resource.url, {
+        headers: { Range: 'bytes=0-0' },
+        timeout: 10000,
+        validateStatus: () => true,
+        responseType: 'arraybuffer',
+      })
+      if (probe.status === 200 || probe.status === 206) {
+        return fallback
+      }
+
+      logger.warn(
+        `[ZimService] Curated download URL returned ${probe.status} for ${resource.id}, checking Kiwix catalog for a newer version.`
+      )
+    } catch (error) {
+      logger.warn(
+        `[ZimService] Curated download URL unreachable for ${resource.id}: ${error instanceof Error ? error.message : error}. Checking Kiwix catalog for a newer version.`
+      )
+    }
+
+    try {
+      const latest = await new KiwixCatalogService().getLatestZim(resource.id)
+      if (latest) {
+        logger.info(
+          `[ZimService] Resolved ${resource.id} to catalog version ${latest.version} (pinned version was ${resource.version}).`
+        )
+        return {
+          url: latest.download_url,
+          version: latest.version,
+          sizeMb: Math.round(latest.size_bytes / (1024 * 1024)),
+        }
+      }
+    } catch (error) {
+      logger.warn(
+        `[ZimService] Kiwix catalog fallback failed for ${resource.id}: ${error instanceof Error ? error.message : error}`
+      )
+    }
+
+    return fallback
   }
 
   async downloadRemoteSuccessCallback(urls: string[], restart = true) {

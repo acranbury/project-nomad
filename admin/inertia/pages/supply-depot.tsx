@@ -992,6 +992,14 @@ function AppCard({
             legacy
           </span>
         ) : null}
+        {service.emulated ? (
+          <span
+            className="text-xs px-2 py-0.5 rounded-full font-medium bg-desert-tan-lighter text-desert-tan-dark border border-desert-tan-light"
+            title="No native arm64 image is published for this app, so it runs under Rosetta 2 emulation on this Mac. It still works, just slower to start than a native image."
+          >
+            emulated
+          </span>
+        ) : null}
         {uiPort && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-surface-secondary text-text-muted font-mono">
             {uiIsHttps ? '🔒 ' : ''}:{uiPort}

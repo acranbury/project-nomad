@@ -536,6 +536,36 @@ export default class ServiceSeeder extends BaseSeeder {
       depends_on: null,
       metadata: JSON.stringify({ minMemoryMB: 2048, minDiskMB: 20480 }),
     },
+    {
+      service_name: SERVICE_NAMES.MEALIE,
+      friendly_name: 'Mealie',
+      powered_by: 'Mealie',
+      display_order: 28,
+      description: 'Self-hosted recipe manager — import, organize, and plan meals from your own cookbook',
+      icon: 'IconChefHat',
+      container_image: 'ghcr.io/mealie-recipes/mealie:v3.20.1',
+      source_repo: 'https://github.com/mealie-recipes/mealie',
+      container_command: null,
+      container_config: JSON.stringify({
+        HostConfig: {
+          RestartPolicy: { Name: 'unless-stopped' },
+          PortBindings: { '9000/tcp': [{ HostPort: '8460' }] },
+          Binds: [`${ServiceSeeder.NOMAD_STORAGE_ABS_PATH}/mealie:/app/data`],
+        },
+        ExposedPorts: { '9000/tcp': {} },
+        // ALLOW_SIGNUP defaults to false upstream — left unset intentionally. Mealie ships a
+        // known default admin account (changeme@example.com) rather than a first-run wizard, so
+        // the docs page walks users through logging in with it and replacing the password.
+      }),
+      ui_location: '8460',
+      installed: false,
+      installation_status: 'idle',
+      is_dependency_service: false,
+      is_custom: false,
+      category: 'productivity',
+      depends_on: null,
+      metadata: JSON.stringify({ minMemoryMB: 512, minDiskMB: 1024 }),
+    },
   ]
 
   async run() {

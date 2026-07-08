@@ -5,6 +5,7 @@ import KVStore from '#models/kv_store'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
+import { getMacHostSpecs } from '../utils/mac_host_specs.js'
 
 @inject()
 export default class EasySetupController {
@@ -14,15 +15,18 @@ export default class EasySetupController {
   ) {}
 
   async index({ inertia }: HttpContext) {
-    const [services, remoteOllamaUrl] = await Promise.all([
+    const isMacosHost = env.get('NOMAD_HOST_OS') === 'darwin'
+    const [services, remoteOllamaUrl, hostSpecs] = await Promise.all([
       this.systemService.getServices({ installedOnly: false }),
       KVStore.getValue('ai.remoteOllamaUrl'),
+      isMacosHost ? getMacHostSpecs() : Promise.resolve(undefined),
     ])
     return inertia.render('easy-setup/index', {
       system: {
         services: services,
         remoteOllamaUrl: remoteOllamaUrl ?? '',
-        isMacosHost: env.get('NOMAD_HOST_OS') === 'darwin',
+        isMacosHost,
+        hostSpecs,
       },
     })
   }

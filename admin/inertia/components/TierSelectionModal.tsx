@@ -24,6 +24,16 @@ function resourceFilename(resource: SpecResource): string {
   return last && last.length > 0 ? last : resource.id
 }
 
+// Human-readable labels for the free-text content_type scope hints set in
+// collections/kiwix-categories.json. Unrecognized/absent values render nothing.
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  'reference-qa': 'reference Q&A',
+  'community-scrape': 'community scrape',
+  'preservation-guide': 'preservation guide',
+  'video-course': 'video course',
+  'classic-texts': 'classic texts',
+}
+
 interface TierSelectionModalProps {
   isOpen: boolean
   onClose: () => void
@@ -269,13 +279,18 @@ const TierSelectionModal: React.FC<TierSelectionModalProps> = ({
                                 </p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                   {ownResources.map((resource, idx) => (
-                                    <div key={idx} className="flex items-start text-sm">
+                                    <div key={idx} className="flex items-start text-sm" title={resource.description}>
                                       <IconCheck size={14} className="text-desert-green mr-1.5 mt-0.5 flex-shrink-0" />
                                       <div>
                                         <span className="text-text-primary">{resource.title}</span>
                                         <span className="text-text-muted text-xs ml-1">
                                           ({formatBytes(resource.size_mb * 1024 * 1024, 0)})
                                         </span>
+                                        {resource.content_type && CONTENT_TYPE_LABELS[resource.content_type] && (
+                                          <span className="text-text-muted text-xs ml-1 italic">
+                                            · {CONTENT_TYPE_LABELS[resource.content_type]}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                   ))}

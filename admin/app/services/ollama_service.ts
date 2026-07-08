@@ -16,6 +16,7 @@ import { BROADCAST_CHANNELS } from '../../constants/broadcast.js'
 import env from '#start/env'
 import { NOMAD_API_DEFAULT_BASE_URL } from '../../constants/misc.js'
 import KVStore from '#models/kv_store'
+import { parseModelSizeToGb } from '../utils/model_size.js'
 
 const NOMAD_MODELS_API_PATH = '/api/v1/ollama/models'
 const MODELS_CACHE_FILE = path.join(process.cwd(), 'storage', 'ollama-models-cache.json')
@@ -921,21 +922,7 @@ export class OllamaService {
 
     models.forEach((model) => {
       if (model.tags && Array.isArray(model.tags)) {
-        model.tags.sort((a, b) => {
-          const parseSize = (size: string) => {
-            const multiplier = size.endsWith('KB')
-              ? 1 / 1_000
-              : size.endsWith('MB')
-                ? 1 / 1_000_000
-                : size.endsWith('GB')
-                  ? 1
-                  : size.endsWith('TB')
-                    ? 1_000
-                    : 0
-            return parseFloat(size) * multiplier
-          }
-          return parseSize(a.size) - parseSize(b.size)
-        })
+        model.tags.sort((a, b) => parseModelSizeToGb(a.size) - parseModelSizeToGb(b.size))
       }
     })
 

@@ -292,10 +292,10 @@ download_management_compose_file() {
   local db_root_password=$(generateRandomPass)
   local db_user_password=$(generateRandomPass)
 
-  if [[ -d "${NOMAD_DIR}/mysql" ]]; then
-    echo -e "${YELLOW}#${RESET} Removing existing MySQL data directory to ensure credentials match...\\n"
-    rm -rf "${NOMAD_DIR}/mysql"
-  fi
+  # MySQL/Redis live in named Docker volumes on macOS (see the VirtioFS note below),
+  # not a bind-mount directory under NOMAD_DIR, so a leftover volume from a prior run
+  # is what needs clearing to keep it in sync with the freshly generated passwords above.
+  docker volume rm nomad-mysql-data >/dev/null 2>&1 || true
 
   echo -e "${YELLOW}#${RESET} Configuring docker-compose file for this Mac...\\n"
 
@@ -349,6 +349,45 @@ download_management_compose_file() {
   # meaning across the VM boundary. Drop it — the collector still reports usable stats
   # from the storage volume mount.
   sed -i '' "\#- /:/host:ro,rslave#d" "$compose_file_path"
+
+  # VirtioFS (Docker Desktop's host-file-sharing layer for bind mounts under $HOME) adds
+  # significant latency to small-random-write, fsync-heavy I/O — exactly MySQL's and
+  # Redis's access pattern, and has historically been a source of MySQL lock/corruption
+  # oddities under Docker Desktop. Named Docker volumes live on the VM's own disk image
+  # instead, so database I/O runs at native VM speed. User content (ZIMs, models, notes)
+  # stays on the bind mount at NOMAD_DIR/storage, where cross-platform access to the
+  # files matters more than raw I/O throughput.
+  awk -v nomad_dir="$NOMAD_DIR" '
+    index($0, nomad_dir "/mysql:/var/lib/mysql") {
+      print "      - nomad-mysql-data:/var/lib/mysql # Named Docker volume (not a bind mount) — avoids slow VirtioFS I/O for MySQL on macOS"
+      next
+    }
+    index($0, nomad_dir "/redis:/data") {
+      print "      - nomad-redis-data:/data # Named Docker volume (not a bind mount) — avoids slow VirtioFS I/O for Redis on macOS"
+      next
+    }
+    { print }
+  ' "$compose_file_path" > "${compose_file_path}.tmp" && mv "${compose_file_path}.tmp" "$compose_file_path"
+
+  awk '
+    { print }
+    /^  nomad-update-shared:/ { in_block = 1 }
+    in_block && /driver: local/ {
+      print "  nomad-mysql-data:"
+      print "    driver: local"
+      print "  nomad-redis-data:"
+      print "    driver: local"
+      in_block = 0
+    }
+  ' "$compose_file_path" > "${compose_file_path}.tmp" && mv "${compose_file_path}.tmp" "$compose_file_path"
+
+  # The anchors above depend on the upstream compose file's mysql/redis bind mounts and
+  # top-level volumes block staying in their current form. Fail loudly rather than silently
+  # shipping a compose file where the database volumes weren't actually converted.
+  if ! grep -q 'nomad-mysql-data:' "$compose_file_path" || ! grep -q 'nomad-redis-data:' "$compose_file_path"; then
+    echo -e "${RED}#${RESET} Failed to configure named Docker volumes for MySQL/Redis. The compose file format may have changed upstream."
+    exit 1
+  fi
 
   echo -e "${GREEN}#${RESET} Docker compose file configured successfully.\\n"
 }
@@ -415,6 +454,88 @@ write_gpu_marker() {
   echo 'metal' > "${NOMAD_DIR}/storage/.nomad-gpu-type" 2>/dev/null || true
 }
 
+write_host_specs() {
+  # The admin container only sees Docker Desktop's Linux VM (systeminformation
+  # inside the container reports the VM's memory/CPU allocation, not the Mac's), so
+  # this is the only accurate source for the host's real chip/memory/cores. Captured
+  # once at install time via sysctl and read by admin/app/utils/mac_host_specs.ts to
+  # size AI model recommendations and report honest hardware/benchmark info.
+  local chip mem_bytes cpu_cores
+  chip=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "Apple Silicon")
+  mem_bytes=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
+  cpu_cores=$(sysctl -n hw.ncpu 2>/dev/null || echo 0)
+  printf '{"chip":"%s","memoryBytes":%s,"cpuCores":%s}' "${chip//\"/}" "${mem_bytes}" "${cpu_cores}" \
+    > "${NOMAD_DIR}/storage/.nomad-host-specs" 2>/dev/null || true
+}
+
+configure_boot_persistence() {
+  # Belt-and-suspenders for an unattended Mac Mini: `restart: unless-stopped` on the
+  # containers and `brew services` for Ollama already survive a Docker Desktop/OrbStack
+  # restart, but nothing brings the *management stack* back if the Mac reboots while
+  # Docker Desktop's own "start at login" is off, or after a crash recovery where
+  # containers were left stopped. A LaunchAgent that runs at every login closes that gap.
+  echo -e "${YELLOW}#${RESET} Configuring Project N.O.M.A.D. to start automatically at login...\\n"
+
+  local launch_agents_dir="$HOME/Library/LaunchAgents"
+  local plist_path="${launch_agents_dir}/us.projectnomad.start.plist"
+  local boot_script_path="${NOMAD_DIR}/nomad_boot.sh"
+
+  mkdir -p "$launch_agents_dir"
+
+  # Docker Desktop/OrbStack take time to boot their VM after login, so this polls for
+  # the daemon to become reachable instead of racing it with an immediate `docker start`
+  # (which would silently no-op against an unreachable daemon).
+  cat > "$boot_script_path" <<'BOOT_SCRIPT_EOF'
+#!/bin/bash
+# Run at login by the us.projectnomad.start LaunchAgent (see install_nomad_macos.sh).
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+for _ in $(seq 1 60); do
+  if docker info >/dev/null 2>&1; then
+    exec "${script_dir}/start_nomad.sh"
+  fi
+  sleep 5
+done
+
+echo "Docker did not become available within 5 minutes; giving up." >&2
+exit 1
+BOOT_SCRIPT_EOF
+  chmod +x "$boot_script_path"
+
+  cat > "$plist_path" <<PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>us.projectnomad.start</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>${boot_script_path}</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>${NOMAD_DIR}/storage/logs/boot.log</string>
+	<key>StandardErrorPath</key>
+	<string>${NOMAD_DIR}/storage/logs/boot.log</string>
+</dict>
+</plist>
+PLIST_EOF
+
+  # Unload any stale copy from a previous install first — `launchctl load` on an
+  # already-loaded label is a silent no-op, which would leave a prior run's copy
+  # (e.g. pointing at a since-removed NOMAD_DIR) active instead of this one.
+  launchctl unload "$plist_path" >/dev/null 2>&1 || true
+  if launchctl load "$plist_path" 2>/dev/null; then
+    echo -e "${GREEN}#${RESET} Project N.O.M.A.D. will now start automatically when you log in.\\n"
+  else
+    echo -e "${YELLOW}#${RESET} Wrote a login item for Project N.O.M.A.D., but couldn't load it immediately. It will still take effect next time you log in.\\n"
+  fi
+}
+
 success_message() {
   echo -e "${GREEN}#${RESET} Project N.O.M.A.D installation completed successfully!\\n"
   echo -e "${GREEN}#${RESET} Installation files are located at ${NOMAD_DIR}\\n\n"
@@ -424,6 +545,12 @@ success_message() {
   echo -e "${GREEN}#${RESET} in Docker Desktop's settings so everything comes back up automatically after a reboot. You can\\n"
   echo -e "${GREEN}#${RESET} always start/stop the management containers manually with: ${WHITE_R}${NOMAD_DIR}/start_nomad.sh${RESET} / ${WHITE_R}${NOMAD_DIR}/stop_nomad.sh${RESET}\\n"
   echo -e "${GREEN}#${RESET} You can now access the management interface at http://localhost:8080 or http://${local_ip_address}:8080\\n"
+  echo -e "${YELLOW}#${RESET} Running this as an always-on appliance (e.g. a headless Mac Mini)? A couple of manual settings\\n"
+  echo -e "${YELLOW}#${RESET} help it survive power outages and stay reachable when no one is logged in:\\n"
+  echo -e "${YELLOW}#${RESET}   - System Settings > General > Login Items & Extensions: enable auto-login for this user\\n"
+  echo -e "${YELLOW}#${RESET}     (the login item we just configured only runs once someone is logged in)\\n"
+  echo -e "${YELLOW}#${RESET}   - System Settings > Lock Screen: disable sleep, or run: ${WHITE_R}sudo pmset -a sleep 0 disksleep 0${RESET}\\n"
+  echo -e "${YELLOW}#${RESET}   - Restart automatically after a power failure: ${WHITE_R}sudo pmset -a autorestart 1${RESET}\\n"
   echo -e "${GREEN}#${RESET} Thank you for supporting Project N.O.M.A.D!\\n"
 }
 
@@ -454,4 +581,6 @@ download_helper_scripts
 download_management_compose_file
 start_management_containers
 write_gpu_marker
+write_host_specs
+configure_boot_persistence
 success_message

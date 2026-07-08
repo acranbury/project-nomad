@@ -27,6 +27,7 @@ import { DockerService } from './docker_service.js'
 import { SERVICE_NAMES } from '../../constants/service_names.js'
 import { BROADCAST_CHANNELS } from '../../constants/broadcast.js'
 import Dockerode from 'dockerode'
+import { getMacHostSpecs } from '../utils/mac_host_specs.js'
 
 // HMAC secret for signing submissions to the benchmark repository
 // This provides basic protection against casual API abuse.
@@ -331,6 +332,23 @@ export class BenchmarkService {
           }
         } catch (sysError: any) {
           logger.warn(`[BenchmarkService] system_service AMD fallback failed: ${sysError.message}`)
+        }
+      }
+
+      // On macOS, si.cpu()/si.mem() above report Docker Desktop's Linux VM — a generic
+      // virtualized CPU identity and the VM's memory allocation, not the Mac's real
+      // chip/unified memory. The host-specs marker (captured via `sysctl` at install
+      // time) is the only accurate source, and matters more here than anywhere else in
+      // the app since these values get submitted to the public community leaderboard.
+      const macHostSpecs = await getMacHostSpecs()
+      if (macHostSpecs) {
+        return {
+          cpu_model: macHostSpecs.chip,
+          cpu_cores: macHostSpecs.cpuCores || cpu.physicalCores,
+          cpu_threads: macHostSpecs.cpuCores || cpu.cores,
+          ram_bytes: macHostSpecs.memoryBytes,
+          disk_type: diskType,
+          gpu_model: `${macHostSpecs.chip} GPU (Apple Metal, native)`,
         }
       }
 

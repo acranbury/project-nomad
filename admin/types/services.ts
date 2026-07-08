@@ -20,4 +20,9 @@ export type ServiceSlim = Pick<
   | 'is_user_modified'
   | 'is_deprecated'
   | 'category'
-> & { status?: string }
+> & {
+  status?: string
+  // True when this app has no published linux/arm64 image and is running under
+  // Rosetta 2 emulation on this (arm64) host. See constants/arch.ts.
+  emulated?: boolean
+}

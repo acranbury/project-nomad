@@ -5,6 +5,10 @@ export type SpecResource = {
   description: string
   url: string
   size_mb: number
+  // Short scope hint (e.g. "reference-qa", "community-scrape") so the UI can distinguish a
+  // substantial reference work from a thin scrape before download. Optional, not every
+  // resource has one.
+  content_type?: string
 }
 
 export type SpecTier = {

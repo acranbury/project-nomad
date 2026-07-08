@@ -21,6 +21,7 @@ import classNames from 'classnames'
 import type { CategoryWithStatus, SpecTier, SpecResource } from '../../../types/collections'
 import { resolveTierResources } from '~/lib/collections'
 import { SERVICE_NAMES } from '../../../constants/service_names'
+import { formatBytes } from '~/lib/util'
 
 // Capability definitions - maps user-friendly categories to services
 interface Capability {
@@ -113,7 +114,12 @@ const CURATED_CATEGORIES_KEY = 'curated-categories'
 const WIKIPEDIA_STATE_KEY = 'wikipedia-state'
 
 export default function EasySetupWizard(props: {
-  system: { services: ServiceSlim[]; remoteOllamaUrl: string; isMacosHost: boolean }
+  system: {
+    services: ServiceSlim[]
+    remoteOllamaUrl: string
+    isMacosHost: boolean
+    hostSpecs?: { chip: string; memoryBytes: number; cpuCores: number; recommendedMaxModelSizeGb: number }
+  }
 }) {
   const { aiAssistantName } = usePage<{ aiAssistantName: string }>().props
   const CORE_CAPABILITIES = buildCoreCapabilities(aiAssistantName)
@@ -803,6 +809,16 @@ export default function EasySetupWizard(props: {
                                       Pre-configured to use Ollama running natively on this Mac
                                       (Metal-accelerated). Only change this if you want to use a
                                       different AI backend.
+                                      {props.system.hostSpecs && (
+                                        <>
+                                          {' '}
+                                          Detected {props.system.hostSpecs.chip} with{' '}
+                                          {formatBytes(props.system.hostSpecs.memoryBytes)} unified
+                                          memory — models up to ~
+                                          {props.system.hostSpecs.recommendedMaxModelSizeGb} GB
+                                          should run comfortably.
+                                        </>
+                                      )}
                                     </p>
                                   )}
                                 </div>
@@ -1069,6 +1085,11 @@ export default function EasySetupWizard(props: {
                         )}
                       >
                         Size: {model.tags[0].size}
+                        {model.tags[0].exceedsRecommendedMemory && (
+                          <span className="ml-1 text-amber-500">
+                            (may exceed this Mac's available memory)
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

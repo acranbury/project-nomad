@@ -12,6 +12,9 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { RAG_CONTEXT_LIMITS, SYSTEM_PROMPTS } from '../../constants/ollama.js'
 import { SERVICE_NAMES } from '../../constants/service_names.js'
 import logger from '@adonisjs/core/services/logger'
+import env from '#start/env'
+import { getMacHostSpecs } from '../utils/mac_host_specs.js'
+import { annotateModelsWithMemoryFit } from '../utils/model_size.js'
 type Message = { role: 'system' | 'user' | 'assistant'; content: string }
 
 @inject()
@@ -25,13 +28,24 @@ export default class OllamaController {
 
   async availableModels({ request }: HttpContext) {
     const reqData = await request.validateUsing(getAvailableModelsSchema)
-    return await this.ollamaService.getAvailableModels({
+    const result = await this.ollamaService.getAvailableModels({
       sort: reqData.sort,
       recommendedOnly: reqData.recommendedOnly,
       query: reqData.query || null,
       limit: reqData.limit || 15,
       force: reqData.force,
     })
+
+    if (!result) {
+      return result
+    }
+
+    const hostSpecs = env.get('NOMAD_HOST_OS') === 'darwin' ? await getMacHostSpecs() : undefined
+
+    return {
+      ...result,
+      models: annotateModelsWithMemoryFit(result.models, hostSpecs?.recommendedMaxModelSizeGb),
+    }
   }
 
   /**
