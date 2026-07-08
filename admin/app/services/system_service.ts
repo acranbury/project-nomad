@@ -22,6 +22,8 @@ import KVStore from '#models/kv_store'
 import { KV_STORE_SCHEMA, KVStoreKey } from '../../types/kv_store.js'
 import { isNewerVersion } from '../utils/version.js'
 import { invalidateAssistantNameCache } from '../../config/inertia.js'
+import { getMacHostSpecs } from '../utils/mac_host_specs.js'
+import { isAmd64OnlyImage } from '../../constants/arch.js'
 
 @inject()
 export class SystemService {
@@ -381,6 +383,11 @@ export class SystemService {
         is_user_modified: service.is_user_modified,
         is_deprecated: service.is_deprecated,
         category: service.category,
+        // process.arch reflects the admin container's own architecture, which is a
+        // reliable proxy for the host's — the admin image is built per-arch, so an
+        // arm64 host always runs the arm64 admin image. Only relevant on that
+        // architecture: amd64 hosts never hit Rosetta emulation in the first place.
+        emulated: process.arch === 'arm64' && isAmd64OnlyImage(service.container_image),
       })
     }
 
@@ -464,6 +471,10 @@ export class SystemService {
       try {
         const gpuMarker = (await readFile('/app/storage/.nomad-gpu-type', 'utf8')).trim()
         if (gpuMarker === 'metal') {
+          // si.mem() above reports the Docker Desktop Linux VM's memory allocation, not
+          // the Mac's true unified memory — the host-specs marker (captured via `sysctl`
+          // at install time) is the only accurate source on macOS.
+          const hostSpecs = await getMacHostSpecs()
           return {
             cpu,
             mem,
@@ -480,6 +491,7 @@ export class SystemService {
               ollamaGpuAccessible: true,
               gpuVendor: 'metal',
             },
+            hostSpecs,
           }
         }
       } catch {

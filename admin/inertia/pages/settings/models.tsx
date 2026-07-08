@@ -16,7 +16,7 @@ import Switch from '~/components/inputs/Switch'
 import StyledSectionHeader from '~/components/StyledSectionHeader'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import Input from '~/components/inputs/Input'
-import { IconSearch, IconRefresh } from '@tabler/icons-react'
+import { IconSearch, IconRefresh, IconAlertTriangle } from '@tabler/icons-react'
 import { formatBytes } from '~/lib/util'
 import useDebounce from '~/hooks/useDebounce'
 import ActiveModelDownloads from '~/components/ActiveModelDownloads'
@@ -449,6 +449,15 @@ export default function ModelsPage(props: {
             message="If you are connected to an OpenAI API host (e.g. LM Studio), please download models directly in that application."
             className="mb-4"
           />
+          {systemInfo?.hostSpecs && (
+            <Alert
+              type="info"
+              variant="bordered"
+              title={`Recommended for ${systemInfo.hostSpecs.chip} (${formatBytes(systemInfo.hostSpecs.memoryBytes)} unified memory)`}
+              message={`Models up to ~${systemInfo.hostSpecs.recommendedMaxModelSizeGb} GB should run comfortably. Larger models are flagged below — they may load slowly, evict other apps from memory, or fail to load at all.`}
+              className="mb-4"
+            />
+          )}
           <div className="flex justify-start items-center gap-3 mt-4">
             <Input
               name="search"
@@ -544,7 +553,15 @@ export default function ModelsPage(props: {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="text-sm text-text-secondary">{tag.size || 'N/A'}</span>
+                                <span className="text-sm text-text-secondary inline-flex items-center gap-1">
+                                  {tag.size || 'N/A'}
+                                  {tag.exceedsRecommendedMemory && (
+                                    <IconAlertTriangle
+                                      className="w-4 h-4 text-amber-500"
+                                      title="May exceed this Mac's available unified memory"
+                                    />
+                                  )}
+                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <StyledButton

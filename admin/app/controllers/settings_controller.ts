@@ -7,6 +7,8 @@ import { getSettingSchema, updateSettingSchema, validateSettingValue } from '#va
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
+import { getMacHostSpecs } from '../utils/mac_host_specs.js'
+import { annotateModelsWithMemoryFit } from '../utils/model_size.js'
 
 @inject()
 export default class SettingsController {
@@ -55,20 +57,35 @@ export default class SettingsController {
   }
 
   async models({ inertia }: HttpContext) {
-    const availableModels = await this.ollamaService.getAvailableModels({
-      sort: 'pulls',
-      recommendedOnly: false,
-      query: null,
-      limit: 15,
-    })
-    const installedModels = await this.ollamaService.getModels().catch(() => [])
-    const chatSuggestionsEnabled = await KVStore.getValue('chat.suggestionsEnabled')
-    const aiAssistantCustomName = await KVStore.getValue('ai.assistantCustomName')
-    const remoteOllamaUrl = await KVStore.getValue('ai.remoteOllamaUrl')
-    const ollamaFlashAttention = await KVStore.getValue('ai.ollamaFlashAttention')
+    const isMacosHost = env.get('NOMAD_HOST_OS') === 'darwin'
+    const [
+      availableModels,
+      installedModels,
+      chatSuggestionsEnabled,
+      aiAssistantCustomName,
+      remoteOllamaUrl,
+      ollamaFlashAttention,
+      hostSpecs,
+    ] = await Promise.all([
+      this.ollamaService.getAvailableModels({
+        sort: 'pulls',
+        recommendedOnly: false,
+        query: null,
+        limit: 15,
+      }),
+      this.ollamaService.getModels().catch(() => []),
+      KVStore.getValue('chat.suggestionsEnabled'),
+      KVStore.getValue('ai.assistantCustomName'),
+      KVStore.getValue('ai.remoteOllamaUrl'),
+      KVStore.getValue('ai.ollamaFlashAttention'),
+      isMacosHost ? getMacHostSpecs() : Promise.resolve(undefined),
+    ])
     return inertia.render('settings/models', {
       models: {
-        availableModels: availableModels?.models || [],
+        availableModels: annotateModelsWithMemoryFit(
+          availableModels?.models || [],
+          hostSpecs?.recommendedMaxModelSizeGb
+        ),
         installedModels: installedModels || [],
         settings: {
           chatSuggestionsEnabled: chatSuggestionsEnabled ?? false,

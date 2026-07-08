@@ -10,6 +10,13 @@ export type GpuHealthStatus = {
   gpuVendor?: 'nvidia' | 'amd' | 'metal'
 }
 
+export type MacHostSpecs = {
+  chip: string
+  memoryBytes: number
+  cpuCores: number
+  recommendedMaxModelSizeGb: number
+}
+
 export type SystemInformationResponse = {
   cpu: Systeminformation.CpuData
   mem: Systeminformation.MemData
@@ -20,6 +27,9 @@ export type SystemInformationResponse = {
   uptime: Systeminformation.TimeData
   graphics: Systeminformation.GraphicsData
   gpuHealth?: GpuHealthStatus
+  // Only present on macOS installs — see admin/app/utils/mac_host_specs.ts.
+  // `mem` above reflects the Docker Desktop VM's allocation, not the real Mac.
+  hostSpecs?: MacHostSpecs
 }
 
 // Type inferrence is not working properly with usePage and shared props, so we define this type manually

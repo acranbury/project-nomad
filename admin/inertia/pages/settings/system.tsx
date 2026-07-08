@@ -295,6 +295,15 @@ export default function SettingsPage(props: {
                   </span>
                 </div>
               </div>
+              {info?.hostSpecs && (
+                <p className="mt-4 text-xs text-desert-stone-dark">
+                  The figures above reflect memory visible inside Docker Desktop's VM, not the
+                  Mac itself. This {info.hostSpecs.chip} actually has{' '}
+                  {formatBytes(info.hostSpecs.memoryBytes)} of unified memory, shared between the
+                  OS, Docker, and the native Ollama process — models up to ~
+                  {info.hostSpecs.recommendedMaxModelSizeGb} GB should run comfortably.
+                </p>
+              )}
             </div>
           </section>
           <section className="mb-12">

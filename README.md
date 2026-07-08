@@ -45,6 +45,8 @@ bash install_nomad_macos.sh
 
 Unlike the Linux install, Ollama is installed **natively** via Homebrew instead of in a container — Docker on macOS has no access to the Apple GPU, so a containerized Ollama would be CPU-only. Running it natively means it uses **Metal acceleration automatically**, and the AI Assistant is pre-configured to talk to it out of the box. Everything else (the management UI, database, Kiwix, etc.) still runs in Docker exactly as it does on Linux.
 
+The installer also sets up a login item so N.O.M.A.D. starts itself back up automatically the next time you log in — handy if you're running this on a dedicated Mac Mini. If you want it to survive an unattended reboot too (e.g. after a power outage), see the guidance printed at the end of the install for enabling auto-login and disabling sleep.
+
 ### Advanced Installation
 For more control over the installation process, copy and paste the [Docker Compose template](https://raw.githubusercontent.com/Crosstalk-Solutions/project-nomad/refs/heads/main/install/management_compose.yaml) into a `docker-compose.yml` file and customize it to your liking (be sure to replace any placeholders with your actual values). Then, run `docker compose up -d` to start the Command Center and its dependencies. Note: this method is recommended for advanced users only, as it requires familiarity with Docker and manual configuration before starting.
 

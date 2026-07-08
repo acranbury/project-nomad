@@ -34,6 +34,20 @@ To get around this, `install_nomad_macos.sh` installs Ollama **natively** on the
 
 If you ever see a "port 11434 already in use" message during an AI Assistant install attempt on macOS, that's expected: it means the native Ollama is already running correctly. There's no need to install the Ollama container on top of it.
 
+## Why does the macOS install store MySQL and Redis data differently than Linux?
+
+On Linux, MySQL and Redis persist to bind-mounted directories under `/opt/project-nomad`. On macOS, `install_nomad_macos.sh` uses named Docker volumes for those two services instead of a bind mount under `~/nomad`.
+
+This is a VirtioFS thing: Docker Desktop's file-sharing layer for bind mounts under your home directory is noticeably slower than the VM's own disk for the small-random-write, fsync-heavy I/O pattern that databases produce, and has been a known source of MySQL lock/corruption oddities on Docker Desktop. Named volumes live directly on the VM's disk image, so the Command Center's database runs at native speed. Your actual content — ZIMs, downloaded AI models, notes, everything under `storage/` — still lives on the regular bind mount, since being able to browse/back up those files directly from the Mac matters more there than raw I/O throughput.
+
+If you uninstall via `uninstall_nomad_macos.sh` and choose to permanently delete your data, both the `~/nomad` directory and these named volumes are removed together.
+
+## Are System Benchmark results accurate on macOS?
+
+Yes — with one caveat worth knowing about. The admin's hardware detection normally runs inside its own container, which on macOS means Docker Desktop's Linux VM rather than the Mac itself. Left as-is, that would report a generic virtualized CPU and the VM's memory allocation instead of your actual chip and unified memory — misleading on a hardware benchmark whose whole point is comparing real machines.
+
+To avoid that, `install_nomad_macos.sh` captures your Mac's real chip name, core count, and unified memory via `sysctl` at install time and the benchmark reads those instead. Your System Benchmark and any leaderboard submission will show your actual Apple Silicon chip and memory, and the GPU field is labeled "(Apple Metal, native)" so it's clear the AI benchmark ran with Metal acceleration, not on CPU.
+
 ## Why does NOMAD require a Debian-based OS?
 
 Project N.O.M.A.D. is currently designed to run on Debian-based Linux distributions (with Ubuntu being the recommended distro) because our installation scripts and Docker configurations are optimized for this environment. While it's technically possible to run the Docker containers on other operating systems that support Docker, we have not tested or optimized the installation process for non-Debian-based systems, so we cannot guarantee a smooth experience on those platforms at this time.

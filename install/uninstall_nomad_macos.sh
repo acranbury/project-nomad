@@ -108,6 +108,15 @@ ollama_cleanup() {
   esac
 }
 
+remove_boot_persistence() {
+  local plist_path="$HOME/Library/LaunchAgents/us.projectnomad.start.plist"
+  if [[ -f "$plist_path" ]]; then
+    echo "Removing login item that starts Project N.O.M.A.D. automatically..."
+    launchctl unload "$plist_path" >/dev/null 2>&1 || true
+    rm -f "$plist_path"
+  fi
+}
+
 storage_cleanup() {
   read -p "Do you want to delete the Project N.O.M.A.D. directory (${NOMAD_DIR})? This is best if you want to start a completely fresh install. This will PERMANENTLY DELETE all stored Nomad data and can't be undone! (y/N): " delete_dir_choice
   case "$delete_dir_choice" in
@@ -118,6 +127,14 @@ storage_cleanup() {
           else
               echo "Warning: Failed to fully remove ${NOMAD_DIR}. You may need to remove it manually."
           fi
+
+          # MySQL/Redis data lives in named Docker volumes on macOS, not under NOMAD_DIR
+          # (VirtioFS is too slow for database I/O — see install_nomad_macos.sh), so the
+          # directory removal above doesn't touch it. Drop it here since the user just
+          # consented to permanently deleting all stored Nomad data.
+          echo "Removing project-nomad_nomad-mysql-data and project-nomad_nomad-redis-data volumes if they exist..."
+          docker volume rm project-nomad_nomad-mysql-data 2>/dev/null && echo "MySQL volume removed." || echo "MySQL volume already removed or not found."
+          docker volume rm project-nomad_nomad-redis-data 2>/dev/null && echo "Redis volume removed." || echo "Redis volume already removed or not found."
           ;;
       * )
           echo "Skipping removal of ${NOMAD_DIR}."
@@ -143,6 +160,8 @@ uninstall_nomad() {
 
     echo "Removing project-nomad_nomad-update-shared volume if it exists..."
     docker volume rm project-nomad_nomad-update-shared 2>/dev/null && echo "Volume removed." || echo "Volume already removed or not found."
+
+    remove_boot_persistence
 
     ollama_cleanup
     storage_cleanup

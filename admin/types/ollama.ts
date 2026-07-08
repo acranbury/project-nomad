@@ -15,6 +15,9 @@ export type NomadOllamaModelTag = {
   input: string
   cloud: boolean
   thinking: boolean
+  // Set server-side when host specs are known (macOS) and this tag's size exceeds
+  // the recommended budget for the host's unified memory. Undefined elsewhere.
+  exceedsRecommendedMemory?: boolean
 }
 
 export type NomadOllamaModelAPIResponse = {
