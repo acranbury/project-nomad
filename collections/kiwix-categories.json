@@ -1,5 +1,5 @@
 {
-  "spec_version": "2026-03-15",
+  "spec_version": "2026-07-08",
   "categories": [
     {
       "name": "Medicine",
@@ -382,57 +382,26 @@
       ]
     },
     {
-      "name": "Agriculture & Food",
-      "slug": "agriculture",
-      "icon": "IconPlant",
-      "description": "Grow and prepare your own food - gardening, cooking techniques, and food preservation.",
+      "name": "Cooking & Recipes",
+      "slug": "cooking",
+      "icon": "IconChefHat",
+      "description": "Real recipes, cooking technique Q&A, and food preservation guides for everyday meals and long-term storage.",
       "language": "en",
       "tiers": [
         {
           "name": "Essential",
-          "slug": "agriculture-essential",
-          "description": "Quick recipes and cooking basics for everyday meal preparation.",
+          "slug": "cooking-essential",
+          "description": "Practical cooking Q&A, food preservation techniques, and a couple of small community recipe collections.",
           "recommended": true,
           "resources": [
-            {
-              "id": "foss.cooking_en_all",
-              "version": "2026-02",
-              "title": "FOSS Cooking",
-              "description": "Quick and easy cooking guides and recipes",
-              "url": "https://download.kiwix.org/zim/zimit/foss.cooking_en_all_2026-02.zim",
-              "size_mb": 24
-            },
-            {
-              "id": "based.cooking_en_all",
-              "version": "2026-02",
-              "title": "Based.Cooking",
-              "description": "Simple, practical recipes from the community",
-              "url": "https://download.kiwix.org/zim/zimit/based.cooking_en_all_2026-02.zim",
-              "size_mb": 16
-            }
-          ]
-        },
-        {
-          "name": "Standard",
-          "slug": "agriculture-standard",
-          "description": "Gardening knowledge and cooking expertise from community Q&A. Includes Essential.",
-          "includesTier": "agriculture-essential",
-          "resources": [
-            {
-              "id": "gardening.stackexchange.com_en_all",
-              "version": "2026-02",
-              "title": "Gardening Q&A",
-              "description": "Stack Exchange Q&A for growing your own food, plant care, and landscaping",
-              "url": "https://download.kiwix.org/zim/stack_exchange/gardening.stackexchange.com_en_all_2026-02.zim",
-              "size_mb": 923
-            },
             {
               "id": "cooking.stackexchange.com_en_all",
               "version": "2026-02",
               "title": "Cooking Q&A",
               "description": "Stack Exchange Q&A for cooking techniques, food safety, and recipes",
               "url": "https://download.kiwix.org/zim/stack_exchange/cooking.stackexchange.com_en_all_2026-02.zim",
-              "size_mb": 236
+              "size_mb": 236,
+              "content_type": "reference-qa"
             },
             {
               "id": "zimgit-food-preparation_en",
@@ -440,15 +409,60 @@
               "title": "Food for Preppers",
               "description": "Recipes and techniques for food preservation and long-term storage",
               "url": "https://download.kiwix.org/zim/other/zimgit-food-preparation_en_2025-04.zim",
-              "size_mb": 98
+              "size_mb": 98,
+              "content_type": "preservation-guide"
+            },
+            {
+              "id": "foss.cooking_en_all",
+              "version": "2026-02",
+              "title": "FOSS Cooking",
+              "description": "Small community recipe scrape, text-only, no photos",
+              "url": "https://download.kiwix.org/zim/zimit/foss.cooking_en_all_2026-02.zim",
+              "size_mb": 24,
+              "content_type": "community-scrape"
+            },
+            {
+              "id": "based.cooking_en_all",
+              "version": "2026-02",
+              "title": "Based.Cooking",
+              "description": "Small community recipe scrape, minimalist plain-text format, no photos",
+              "url": "https://download.kiwix.org/zim/zimit/based.cooking_en_all_2026-02.zim",
+              "size_mb": 16,
+              "content_type": "community-scrape"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gardening & Agriculture",
+      "slug": "agriculture",
+      "icon": "IconPlant",
+      "description": "Grow your own food - gardening Q&A, homesteading, and self-sufficiency skills.",
+      "language": "en",
+      "tiers": [
+        {
+          "name": "Essential",
+          "slug": "agriculture-essential",
+          "description": "Community Q&A for growing food, plant care, and landscaping.",
+          "recommended": true,
+          "resources": [
+            {
+              "id": "gardening.stackexchange.com_en_all",
+              "version": "2026-02",
+              "title": "Gardening Q&A",
+              "description": "Stack Exchange Q&A for growing your own food, plant care, and landscaping",
+              "url": "https://download.kiwix.org/zim/stack_exchange/gardening.stackexchange.com_en_all_2026-02.zim",
+              "size_mb": 923,
+              "content_type": "reference-qa"
             }
           ]
         },
         {
           "name": "Comprehensive",
           "slug": "agriculture-comprehensive",
-          "description": "Complete self-sufficiency with homesteading videos, classic agricultural texts, and advanced techniques. Includes Standard.",
-          "includesTier": "agriculture-standard",
+          "description": "Complete self-sufficiency with homesteading videos and classic agricultural texts. Includes Essential.",
+          "includesTier": "agriculture-essential",
           "resources": [
             {
               "id": "lrnselfreliance_en_all",
@@ -456,7 +470,8 @@
               "title": "Learning Self-Reliance: Homesteading",
               "description": "Beekeeping, animal husbandry, and sustainable living practices",
               "url": "https://download.kiwix.org/zim/videos/lrnselfreliance_en_all_2025-12.zim",
-              "size_mb": 3970
+              "size_mb": 3970,
+              "content_type": "video-course"
             },
             {
               "id": "gutenberg_en_lcc-s",
@@ -464,7 +479,8 @@
               "title": "Project Gutenberg: Agriculture",
               "description": "Classic texts on farming, animal husbandry, plant cultivation, and food preservation",
               "url": "https://download.kiwix.org/zim/gutenberg/gutenberg_en_lcc-s_2026-03.zim",
-              "size_mb": 4300
+              "size_mb": 4300,
+              "content_type": "classic-texts"
             }
           ]
         }

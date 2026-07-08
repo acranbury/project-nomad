@@ -282,3 +282,27 @@ A browser-based client for [MeshCore](https://meshcore.co.uk) radios. MeshCore i
 **Your data:** There's nothing to set up or store on your NOMAD for this app. Your radio's settings live on the radio itself, and the app's preferences live in your browser. There's no NOMAD folder to manage.
 
 **Works offline:** Fully offline, which is the whole point of MeshCore. The app is served from your NOMAD and talks to your radio directly over USB or Bluetooth, never the internet.
+
+## Mealie {% #mealie %}
+
+A self-hosted recipe manager. Import recipes straight from a URL while you're online (it grabs the ingredients, steps, and photo automatically from most recipe sites), or add your own by hand, and everything after that works completely offline: full-text and ingredient search, meal planning, shopping lists, and unit scaling. Think of it as building your own permanent, searchable cookbook instead of relying on whatever recipe content happens to be in a downloaded Information Library archive.
+
+**Official site:** [mealie.io](https://mealie.io) · **Source:** [github.com/mealie-recipes/mealie](https://github.com/mealie-recipes/mealie)
+
+**First time you open it, log in with the default account and change it immediately:**
+
+1. Click **Open** on the Mealie card.
+2. Log in with the built-in default account: email `changeme@example.com`, password `MyPassword`.
+3. Go to your user settings and change both the email and password right away. Anyone who can reach Mealie on your network knows these same default credentials, so don't leave them in place.
+
+New account sign-up is turned off by default (Mealie's own upstream default), so the built-in account above is the only way in until you decide to open it back up or invite people.
+
+**Adding recipes:**
+- **From a URL** (needs internet): click **Add Recipe > From URL**, paste a link from most recipe sites, and Mealie extracts the ingredients, steps, and photo for you.
+- **By hand** (works offline): click **Add Recipe > Manual Entry** and fill in the details yourself — useful for family recipes or transcribing something from a cookbook you own.
+
+**Inviting others:** With sign-up disabled, add household members from **Admin > Users** — Mealie generates an invite link you can share, they set their own password, and they're in.
+
+**Your data:** Everything Mealie stores, recipes, photos, meal plans, and the database, lives in one folder on your NOMAD, `storage/mealie`. Backing up that folder backs up your entire cookbook.
+
+**Works offline:** Browsing, searching, and cooking from recipes you've already added works fully offline. The only feature that needs the internet is importing a new recipe from a URL, since Mealie has to fetch that page. Everything else, meal planning, shopping lists, your existing recipe collection, works the same with or without a connection.

@@ -3,10 +3,12 @@ import {
   IconBox,
   IconHelp,
   IconMapRoute,
+  IconSearch,
   IconSettings,
   IconWifiOff,
 } from '@tabler/icons-react'
 import { Head, Link, router, usePage } from '@inertiajs/react'
+import { useState } from 'react'
 import AppLayout from '~/layouts/AppLayout'
 import { getServiceLink } from '~/lib/navigation'
 import { ServiceSlim } from '../../types/services'
@@ -92,12 +94,28 @@ export default function Home(props: {
   const items: DashboardItem[] = []
   const updateInfo = useUpdateAvailable();
   const { aiAssistantName } = usePage<{ aiAssistantName: string }>().props
+  const [librarySearchQuery, setLibrarySearchQuery] = useState('')
 
   // Check if user has visited Easy Setup
   const { data: easySetupVisited } = useSystemSetting({
     key: 'ui.hasVisitedEasySetup'
   })
   const shouldHighlightEasySetup = easySetupVisited?.value ? String(easySetupVisited.value) !== 'true' : false
+
+  const kiwixService = props.system.services.find(
+    (service) => service.service_name === SERVICE_NAMES.KIWIX && service.installed
+  )
+
+  function handleLibrarySearch(e: React.FormEvent) {
+    e.preventDefault()
+    const query = librarySearchQuery.trim()
+    if (!query || !kiwixService) return
+    // kiwix-serve's own cross-book search page — it already knows which books are installed
+    // and handles picking among them, so NOMAD just hands off the query rather than
+    // re-implementing search against an internal API that isn't meant to be depended on directly.
+    const searchUrl = `${getServiceLink(kiwixService.ui_location || '8090')}/search?pattern=${encodeURIComponent(query)}&pageLength=25`
+    window.open(searchUrl, '_blank')
+  }
 
   // Add installed services (non-dependency services only)
   props.system.services
@@ -155,6 +173,32 @@ export default function Home(props: {
           </div>
         )
       }
+      {kiwixService && (
+        <div className="flex justify-center p-4 w-full">
+          <form onSubmit={handleLibrarySearch} className="flex w-full max-w-xl gap-2">
+            <div className="relative flex-1">
+              <IconSearch
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+              />
+              <input
+                type="text"
+                value={librarySearchQuery}
+                onChange={(e) => setLibrarySearchQuery(e.target.value)}
+                placeholder="Search everything you've downloaded..."
+                className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-desert-stone-light bg-desert-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-desert-green"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!librarySearchQuery.trim()}
+              className="px-4 py-2.5 rounded-lg bg-desert-green text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-desert-green-dark transition-colors"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
         {items.map((item) => {
           const isEasySetup = item.label === 'Easy Setup'
